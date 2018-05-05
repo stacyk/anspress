@@ -187,7 +187,7 @@ class Activity_Helper {
 			),
 			'status_publish'      => array(
 				'ref_type' => 'post',
-				'verb'     => __( 'Changed status to publish', 'anspress-question-answer' ),
+				'verb'     => __( 'Changed status to published', 'anspress-question-answer' ),
 				'icon'     => 'apicon-flag',
 			),
 			'status_future'       => array(
