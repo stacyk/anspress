@@ -37,7 +37,7 @@ class AnsPress_Hooks {
 			anspress()->add_action( 'ap_processed_new_answer', __CLASS__, 'after_new_answer', 1, 2 );
 			anspress()->add_action( 'before_delete_post', __CLASS__, 'before_delete' );
 			anspress()->add_action( 'wp_trash_post', __CLASS__, 'trash_post_action' );
-			anspress()->add_action( 'untrash_post', __CLASS__, 'untrash_ans_on_question_untrash' );
+			anspress()->add_action( 'untrash_post', __CLASS__, 'untrash_posts' );
 			anspress()->add_action( 'comment_post', __CLASS__, 'new_comment_approve', 10, 2 );
 			anspress()->add_action( 'comment_unapproved_to_approved', __CLASS__, 'comment_approve' );
 			anspress()->add_action( 'comment_approved_to_unapproved', __CLASS__, 'comment_unapprove' );
@@ -54,7 +54,6 @@ class AnsPress_Hooks {
 			anspress()->add_action( 'transition_post_status', __CLASS__, 'transition_post_status', 10, 3 );
 			anspress()->add_action( 'ap_vote_casted', __CLASS__, 'update_user_vote_casted_count', 10, 4 );
 			anspress()->add_action( 'ap_vote_removed', __CLASS__, 'update_user_vote_casted_count', 10, 4 );
-			// anspress()->add_action( 'the_post', __CLASS__, 'filter_page_title' );
 			anspress()->add_action( 'ap_display_question_metas', __CLASS__, 'display_question_metas', 100, 2 );
 			anspress()->add_action( 'widget_comments_args', __CLASS__, 'widget_comments_args' );
 
@@ -62,10 +61,11 @@ class AnsPress_Hooks {
 			anspress()->add_filter( 'posts_results', 'AP_QA_Query_Hooks', 'posts_results', 1, 2 );
 			anspress()->add_filter( 'posts_pre_query', 'AP_QA_Query_Hooks', 'modify_main_posts', 999999, 2 );
 			anspress()->add_filter( 'pre_get_posts', 'AP_QA_Query_Hooks', 'pre_get_posts' );
-			anspress()->add_action( 'loop_start', 'AP_QA_Query_Hooks', 'loop_start' );
 
-			// Theme	hooks.
+			// Theme hooks.
 			anspress()->add_action( 'init', 'AnsPress_Theme', 'init_actions' );
+			anspress()->add_filter( 'template_include', 'AnsPress_Theme', 'template_include' );
+			anspress()->add_filter( 'ap_template_include', 'AnsPress_Theme', 'template_include_theme_compat' );
 			anspress()->add_filter( 'post_class', 'AnsPress_Theme', 'question_answer_post_class' );
 			anspress()->add_filter( 'body_class', 'AnsPress_Theme', 'body_class' );
 			anspress()->add_action( 'after_setup_theme', 'AnsPress_Theme', 'includes_theme' );
@@ -78,19 +78,18 @@ class AnsPress_Hooks {
 			//anspress()->add_filter( 'mce_external_languages', __CLASS__, 'mce_plugins_languages' );
 			anspress()->add_filter( 'wp_insert_post_data', __CLASS__, 'wp_insert_post_data', 1000, 2 );
 			anspress()->add_filter( 'ap_form_contents_filter', __CLASS__, 'sanitize_description' );
-			anspress()->add_filter( 'human_time_diff', __CLASS__, 'human_time_diff' );
 
 			anspress()->add_filter( 'template_include', 'AnsPress_Theme', 'anspress_basepage_template', 9999 );
-			anspress()->add_filter( 'comments_open', 'AnsPress_Theme', 'single_question_comment_disable' );
 			anspress()->add_filter( 'get_the_excerpt', 'AnsPress_Theme', 'get_the_excerpt', 9999, 2 );
 			anspress()->add_filter( 'post_class', 'AnsPress_Theme', 'remove_hentry_class', 10, 3 );
-			anspress()->add_filter( 'ap_after_question_content', 'AnsPress_Theme', 'after_question_content' );
+			anspress()->add_action( 'ap_after_question_content', 'AnsPress_Theme', 'after_question_content' );
 			anspress()->add_filter( 'ap_after_answer_content', 'AnsPress_Theme', 'after_question_content' );
 
 			anspress()->add_filter( 'the_comments', 'AnsPress_Comment_Hooks', 'the_comments' );
-			anspress()->add_filter( 'comments_template_query_args', 'AnsPress_Comment_Hooks', 'comments_template_query_args' );
+			//anspress()->add_filter( 'comments_template_query_args', 'AnsPress_Comment_Hooks', 'comments_template_query_args' );
 			anspress()->add_filter( 'get_comment_link', 'AnsPress_Comment_Hooks', 'comment_link', 10, 3 );
 			anspress()->add_filter( 'preprocess_comment', 'AnsPress_Comment_Hooks', 'preprocess_comment' );
+			anspress()->add_filter( 'comments_template', 'AnsPress_Comment_Hooks', 'comments_template' );
 
 			// Common pages hooks.
 			anspress()->add_action( 'init', 'AnsPress_Common_Pages', 'register_common_pages' );
@@ -132,6 +131,7 @@ class AnsPress_Hooks {
 			anspress()->add_action( 'before_delete_post', __CLASS__, 'delete_subscriptions' );
 			anspress()->add_action( 'ap_publish_comment', __CLASS__, 'comment_subscription' );
 			anspress()->add_action( 'deleted_comment', __CLASS__, 'delete_comment_subscriptions', 10, 2 );
+			anspress()->add_action( 'get_comments_number', __CLASS__, 'get_comments_number', 11, 2 );
 	}
 
 	/**
@@ -165,7 +165,8 @@ class AnsPress_Hooks {
 	 * @param   integer $post_id answer id.
 	 * @param   object  $post answer post object.
 	 * @since 2.0.1
-	 * @since 4.1.2 Removed @see ap_update_post_activity_meta().
+	 * @since 4.1.2  Removed @see ap_update_post_activity_meta().
+	 * @since 4.1.11 Removed @see ap_update_answers_count().
 	 */
 	public static function after_new_answer( $post_id, $post ) {
 		// Update answer count.
@@ -325,8 +326,9 @@ class AnsPress_Hooks {
 	 * @param   integer $post_id Post ID.
 	 * @since 2.0.0
 	 * @since 4.1.2 Removed @see ap_update_post_activity_meta().
+	 * @since 4.1.11 Renamed method from `untrash_ans_on_question_untrash` to `untrash_posts`.
 	 */
-	public static function untrash_ans_on_question_untrash( $post_id ) {
+	public static function untrash_posts( $post_id ) {
 		$_post = ap_get_post( $post_id );
 
 		if ( 'question' === $_post->post_type ) {
@@ -452,12 +454,14 @@ class AnsPress_Hooks {
 			'last_updated' => current_time( 'mysql' ),
 		) );
 
+
 		// Log to activity table.
 		ap_activity_add( array(
-			'q_id'   => 'answer' === $post->post_type ? $post->post_parent: $post->ID,
-			'action' => 'new_c',
-			'a_id'   => 'answer' === $post->post_type ? $post->ID: 0,
-			'c_id'   => $comment->comment_ID,
+			'q_id'    => 'answer' === $post->post_type ? $post->post_parent: $post->ID,
+			'action'  => 'new_c',
+			'a_id'    => 'answer' === $post->post_type ? $post->ID: 0,
+			'c_id'    => $comment->comment_ID,
+			'user_id' => $comment->user_id,
 		) );
 	}
 
@@ -585,12 +589,13 @@ class AnsPress_Hooks {
 	 *
 	 * @param	array $attr Allowed CSS attributes.
 	 * @return array
+	 * @since 4.1.11 Fixed wrong variable name.
 	 */
 	public static function safe_style_css( $attr ) {
-		global $ap_kses_checkc; // Check if wp_kses is called by AnsPress.
+		global $ap_kses_check; // Check if wp_kses is called by AnsPress.
 
 		if ( isset( $ap_kses_check ) && $ap_kses_check ) {
-				$attr = array( 'text-decoration', 'text-align' );
+			$attr = array( 'text-decoration', 'text-align' );
 		}
 		return $attr;
 	}
@@ -639,8 +644,10 @@ class AnsPress_Hooks {
 			return;
 		}
 
-		// Deleted unused images from meta.
-		ap_delete_images_not_in_content( $post_id );
+		if ( $updated ) {
+			// Deleted unused images from meta.
+			ap_delete_images_not_in_content( $post_id );
+		}
 
 		$form = anspress()->get_form( 'question' );
 		$values = $form->get_values();
@@ -711,8 +718,10 @@ class AnsPress_Hooks {
 			return;
 		}
 
-		// Deleted unused images from meta.
-		ap_delete_images_not_in_content( $post_id );
+		if ( $updated ) {
+			// Deleted unused images from meta.
+			ap_delete_images_not_in_content( $post_id );
+		}
 
 		$form = anspress()->get_form( 'answer' );
 
@@ -818,18 +827,6 @@ class AnsPress_Hooks {
 	}
 
 	/**
-	 * Append variable to post Object.
-	 *
-	 * @param Object $post Post object.
-	 * @deprecated 4.1.1
-	 */
-	public static function filter_page_title( $post ) {
-		if ( ap_opt( 'base_page' ) == $post->ID && ! is_admin() ) {
-			$post->post_title = ap_page_title();
-		}
-	}
-
-	/**
 	 * Update qameta subscribers count on adding new subscriber.
 	 *
 	 * @param integer $rows Number of rows deleted.
@@ -858,19 +855,21 @@ class AnsPress_Hooks {
 	 * @param	string $since Time since.
 	 * @return string
 	 * @since	2.4.8
+	 *
+	 * @deprecated 4.1.13
 	 */
 	public static function human_time_diff( $since ) {
 		$replace = array(
-			'min'			  => __( 'minute', 'anspress-question-answer' ),
-			'mins'		  => __( 'minutes', 'anspress-question-answer' ),
-			'hour'		  => __( 'hour', 'anspress-question-answer' ),
-			'hours' 	  => __( 'hours', 'anspress-question-answer' ),
-			'day'	 	    => __( 'day', 'anspress-question-answer' ),
-			'days'		  => __( 'days', 'anspress-question-answer' ),
-			'week'		  => __( 'week', 'anspress-question-answer' ),
-			'weeks'		  => __( 'weeks', 'anspress-question-answer' ),
-			'year'		  => __( 'year', 'anspress-question-answer' ),
-			'years'		  => __( 'years', 'anspress-question-answer' ),
+			'min'   => __( 'minute', 'anspress-question-answer' ),
+			'mins'  => __( 'minutes', 'anspress-question-answer' ),
+			'hour'  => __( 'hour', 'anspress-question-answer' ),
+			'hours' => __( 'hours', 'anspress-question-answer' ),
+			'day'   => __( 'day', 'anspress-question-answer' ),
+			'days'  => __( 'days', 'anspress-question-answer' ),
+			'week'  => __( 'week', 'anspress-question-answer' ),
+			'weeks' => __( 'weeks', 'anspress-question-answer' ),
+			'year'  => __( 'year', 'anspress-question-answer' ),
+			'years' => __( 'years', 'anspress-question-answer' ),
 		);
 
 		return strtr( $since, $replace );
@@ -1040,5 +1039,33 @@ class AnsPress_Hooks {
 				'subs_ref_id' => $_comment->comment_ID,
 			) );
 		}
+	}
+
+	/**
+	 * Include anspress comments count.
+	 * This fixes no comments visible while using DIVI.
+	 *
+	 * @param integer $count   Comments count
+	 * @param integer $post_id Post ID.
+	 * @return integer
+	 *
+	 * @since 4.1.13
+	 */
+	public static function get_comments_number( $count, $post_id ) {
+		global $post_type;
+
+		if ( $post_type == 'question' || ( defined( 'DOING_AJAX' ) && true === DOING_AJAX && 'ap_form_comment' === ap_isset_post_value( 'action' ) ) ) {
+			$get_comments     = get_comments( array(
+				'post_id' => $post_id,
+				'status'  => 'approve'
+			) );
+
+			$types = separate_comments( $get_comments );
+			if( ! empty( $types['anspress'] ) ) {
+				$count = count( $types['anspress'] );
+			}
+		}
+
+		return $count;
 	}
 }

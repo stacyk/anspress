@@ -189,12 +189,13 @@ class Validate {
 
 			$new_value = preg_replace_callback( '/<pre(.*?)>(.*?)<\/pre>/imsu', [ __CLASS__, 'pre_content' ], $new_value );
 			$new_value = preg_replace_callback( '/<code.*?>(.*?)<\/code>/imsu', [ __CLASS__, 'code_content' ], $new_value );
-
+			
 			// Remove multiple new lines.
-			$new_value           = preg_replace( '/[\r\n]\s*[\r\n]/', "\n", $new_value );
+			$new_value = str_replace("\r\n", "\n", $new_value);
+			$new_value = preg_replace( '/\n\s*\n/', "\n\n", $new_value );
 
 			// Remove single white single space in line.
-			$new_value           = preg_replace( '/&nbsp;/', "\n", $new_value );
+			$new_value = preg_replace( '/&nbsp;/', "\n", $new_value );
 
 			return $new_value;
 		}
@@ -657,16 +658,16 @@ class Validate {
 
 		if ( true === $args['multiple'] && $is_numeric ) {
 			foreach ( $value as $key => $file ) {
-				$actual_mime = mime_content_type( $file['tmp_name'] );
+				$actual_mime = wp_check_filetype_and_ext( $file['tmp_name'], $file['name'] );
 
-				if ( in_array( $actual_mime, $args['allowed_mimes'], true ) ) {
+				if ( false !== $actual_mime && in_array( $actual_mime['type'], $args['allowed_mimes'], true ) ) {
 					$have_error = false;
 				}
 			}
 		} elseif ( ! $is_numeric ) {
-			$actual_mime = mime_content_type( $value['tmp_name'] );
+			$actual_mime = wp_check_filetype_and_ext( $value['tmp_name'], $value['name'] );
 
-			if ( in_array( $actual_mime, $args['allowed_mimes'], true ) ) {
+			if ( false !== $actual_mime && in_array( $actual_mime['type'], $args['allowed_mimes'], true ) ) {
 				$have_error = false;
 			}
 		}

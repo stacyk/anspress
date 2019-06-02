@@ -85,6 +85,20 @@ class AP_Form_Hooks {
 				'validate'   => 'max_string_length,badwords',
 				'max_length' => 64,
 			);
+
+			if ( empty( $editing_id ) && ap_opt( 'create_account' ) ) {
+				$form['fields']['email'] = array(
+					'label'      => __( 'Your Email', 'anspress-question-answer' ),
+					'attr'       => array(
+						'placeholder' => __( 'Enter your email', 'anspress-question-answer' ),
+					),
+					'desc'       => 'An account for you will be created and a confirmation link will be sent to you with the password.',
+					'order'      => 20,
+					'validate'   => 'is_email,required',
+					'sanitize'   => 'email,required',
+					'max_length' => 64,
+				);
+			}
 		}
 
 		$form['fields']['post_id'] = array(
@@ -185,6 +199,20 @@ class AP_Form_Hooks {
 				'validate'   => 'max_string_length,badwords',
 				'max_length' => 20,
 			);
+
+			if ( empty( $editing_id ) && ap_opt( 'create_account' ) ) {
+				$form['fields']['email'] = array(
+					'label'      => __( 'Your Email', 'anspress-question-answer' ),
+					'attr'       => array(
+						'placeholder' => __( 'Enter your email', 'anspress-question-answer' ),
+					),
+					'desc'       => 'An account for you will be created and a confirmation link will be sent to you with the password.',
+					'order'      => 20,
+					'validate'   => 'is_email,required',
+					'sanitize'   => 'email,required',
+					'max_length' => 64,
+				);
+			}
 		}
 
 		$form['fields']['post_id'] = array(
@@ -371,6 +399,11 @@ class AP_Form_Hooks {
 			$question_args['post_status'] = 'private_post';
 		}
 
+		// Create user if enabled.
+		if ( ! $editing && ! is_user_logged_in() && ap_opt( 'create_account' ) ) {
+			self::create_user( $values, $question_args, $manual );
+		}
+
 		// Check if duplicate.
 		if ( ! $editing && ap_opt( 'duplicate_check' ) && false !== ap_find_duplicate_post( $question_args['post_content'], 'question' ) ) {
 			$form->add_error( 'duplicate-question', __( 'You are trying to post a duplicate question. Please search existing questions before posting a new one.', 'anspress-question-answer' ) );
@@ -467,6 +500,16 @@ class AP_Form_Hooks {
 		if ( $post_id ) {
 			ap_clear_unattached_media();
 		}
+
+		/**
+		 * Action called after processing question form. This is triggred
+		 * only for question submitted from frontend.
+		 *
+		 * @param integer $post_id Question id just created /updated.
+		 *
+		 * @since 4.1.11
+		 */
+		do_action( 'ap_after_question_form_processed', $post_id );
 
 		if ( isset( $question_args['ID'] ) ) {
 			$message = __( 'Question updated successfully, you\'ll be redirected in a moment.', 'anspress-question-answer' );
@@ -578,6 +621,11 @@ class AP_Form_Hooks {
 			$answer_args['post_status'] = 'private_post';
 		}
 
+		// Create user if enabled.
+		if ( ! $editing && ! is_user_logged_in() && ap_opt( 'create_account' ) ) {
+			self::create_user( $values, $answer_args, $manual );
+		}
+
 		/**
 		 * Filter question description before saving.
 		 *
@@ -662,12 +710,22 @@ class AP_Form_Hooks {
 			ap_clear_unattached_media();
 		}
 
+		/**
+		 * Action called after processing answer form. This is triggered
+		 * only for answer submitted from frontend.
+		 *
+		 * @param integer $post_id Answer id just created /updated.
+		 *
+		 * @since 4.1.11
+		 */
+		do_action( 'ap_after_answer_form_processed', $post_id );
+
 		if ( ! $editing ) {
 			anspress()->session->set_answer( $post_id );
 			ap_answer_post_ajax_response( $question_id, $post_id );
 		}
 
-		if ( isset( $answer_args['ID'] ) ) {
+		if ( $editing ) {
 			$message = __( 'Answer updated successfully. Redirecting you to question page.', 'anspress-question-answer' );
 		} else {
 			$message = __( 'Your answer is posted successfully.', 'anspress-question-answer' );
@@ -954,5 +1012,31 @@ class AP_Form_Hooks {
 				),
 			),
 		);
+	}
+
+	public static function create_user( &$values, &$args, $manual ) {
+		$email = $values['email']['value'];
+		$user_id = wp_insert_user( array(
+			'user_email'   => $email,
+			'user_login'   => $email,
+			'user_pass'    => wp_generate_password(),
+			'display_name' => ! empty(  $values['anonymous_name']['value'] ) ? $values['anonymous_name']['value'] : '',
+		) );
+
+		if ( is_wp_error( $user_id ) ) {
+			if ( false === $manual ) {
+				ap_ajax_json( array(
+					'success'  => false,
+					'snackbar' => [ 'message' => $user_id->get_error_message() ],
+				) );
+			} else {
+				return $user_id;
+			}
+		}
+
+		// Send the notification.
+		wp_new_user_notification( $user_id, null, 'both' );
+
+		$args['post_author'] = $user_id;
 	}
 }

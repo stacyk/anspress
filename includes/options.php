@@ -140,6 +140,8 @@ function ap_default_options() {
 		'post_answer_per'               => 'logged_in',
 		'post_comment_per'              => 'logged_in',
 		'activity_exclude_roles'        => [],
+		'create_account'                => true,
+		'allow_private_posts'           => true,
 	);
 
 	/**

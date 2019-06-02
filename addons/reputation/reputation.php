@@ -288,7 +288,7 @@ class Reputation extends \AnsPress\Singleton {
 		$question = get_post( $_post->post_parent );
 
 		// Award select answer points to question author only.
-		if ( get_current_user_id() === $_post->post_author ) {
+		if ( get_current_user_id() === (int) $_post->post_author ) {
 			ap_insert_reputation( 'select_answer', $_post->ID );
 		}
 	}
@@ -403,9 +403,9 @@ class Reputation extends \AnsPress\Singleton {
 				$reputation = ap_get_user_reputation_meta( $args['user_id'] );
 
 				if ( ap_is_addon_active( 'buddypress.php' ) && function_exists( 'bp_core_get_userlink' ) ) {
-					return $name . '<a href="' . ap_user_link( $args['user_id'] ) . 'qa/reputations" class="ap-user-reputation" title="' . __( 'Reputation', 'anspress-question-answer' ) . '">' . $reputation . '</a>';
+					return $name . '<a href="' . ap_user_link( $args['user_id'] ) . 'qa/reputations/" class="ap-user-reputation" title="' . __( 'Reputation', 'anspress-question-answer' ) . '">' . $reputation . '</a>';
 				} else {
-					return $name . '<a href="' . ap_user_link( $args['user_id'] ) . '?tab=reputations" class="ap-user-reputation" title="' . __( 'Reputation', 'anspress-question-answer' ) . '">' . $reputation . '</a>';
+					return $name . '<a href="' . ap_user_link( $args['user_id'] ) . 'reputations/" class="ap-user-reputation" title="' . __( 'Reputation', 'anspress-question-answer' ) . '">' . $reputation . '</a>';
 				}
 			}
 		}

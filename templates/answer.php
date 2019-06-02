@@ -12,11 +12,11 @@
 
 if ( ap_user_can_read_answer() ) :
 ?>
-<div id="post-<?php the_ID(); ?>" <?php post_class(); ?> apid="<?php the_ID(); ?>" ap="answer">
+<div id="post-<?php the_ID(); ?>" class="answer<?php echo ap_is_selected() ? ' best-answer' : ''; ?>" apid="<?php the_ID(); ?>" ap="answer">
 	<div class="ap-content" itemprop="suggestedAnswer<?php echo ap_is_selected() ? ' acceptedAnswer' : ''; ?>" itemscope itemtype="https://schema.org/Answer">
 		<div class="ap-single-vote"><?php ap_vote_btn(); ?></div>
 		<div class="ap-avatar">
-			<a href="<?php ap_profile_link(); ?>"<?php ap_hover_card_attr(); ?>>
+			<a href="<?php ap_profile_link(); ?>">
 				<?php ap_author_avatar( ap_opt( 'avatar_size_qanswer' ) ); ?>
 			</a>
 		</div>

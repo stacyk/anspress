@@ -86,6 +86,13 @@ class Question_Query extends WP_Query {
 
 		$this->args['post_status'] = array_unique( $this->args['post_status'] );
 
+		// Show only the unpublished post of author.
+		if ( isset( $args['ap_show_unpublished'] ) && true === $this->args['ap_show_unpublished'] ) {
+			$this->args['ap_current_user_ignore'] = true;
+			$this->args['author']                 = get_current_user_id();
+			$this->args['post_status']            = [ 'moderate', 'pending', 'draft', 'trash' ];
+		}
+
 		if ( $post_parent ) {
 			$this->args['post_parent'] = $post_parent;
 		}
@@ -355,31 +362,6 @@ function ap_get_author_avatar( $size = 45, $_post = null ) {
  */
 function ap_author_avatar( $size = 45, $_post = null ) {
 	echo ap_get_author_avatar( $size, $_post ); // xss ok.
-}
-
-/**
- * Return hover card attributes.
- *
- * @param  mixed $_post Post ID, Object or null.
- * @return string
- */
-function ap_get_hover_card_attr( $_post = null ) {
-	$_post = ap_get_post( $_post );
-
-	if ( ! $_post ) {
-		return;
-	}
-
-	return ap_hover_card_attributes( $_post->post_author );
-}
-
-/**
- * Echo hover card attributes.
- *
- * @param  mixed $_post Post ID, Object or null.
- */
-function ap_hover_card_attr( $_post = null ) {
-	echo ap_get_hover_card_attr( $_post ); // xss ok.
 }
 
 /**

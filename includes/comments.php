@@ -79,16 +79,6 @@ class AnsPress_Comment_Hooks {
 	}
 
 	/**
-	 * Ajax action for deleting comment.
-	 *
-	 * @since 2.0.0
-	 * @since 3.0.0 Moved from ajax.php to here.
-	 * @deprecated 4.1.8 Replaced by \AnsPress\Ajax\Comment_Delete::init
-	 */
-	public static function delete_comment() {
-	}
-
-	/**
 	 * Modify comment query args for showing pending comments to moderator.
 	 *
 	 * @param  array $args Comment args.
@@ -185,6 +175,23 @@ class AnsPress_Comment_Hooks {
 		}
 
 		return $commentdata;
+	}
+
+	/**
+	 * Override comments template for single question page.
+	 * This will prevent post comments below single question.
+	 *
+	 * @param string $template Template.
+	 * @return string
+	 *
+	 * @since 4.1.11
+	 */
+	public static function comments_template( $template ) {
+		if ( is_singular( 'question' ) || is_anspress() ) {
+			$template = ap_get_theme_location( 'post-comments.php' );
+		}
+
+		return $template;
 	}
 }
 

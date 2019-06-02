@@ -18,8 +18,9 @@ class AP_QA_Query_Hooks {
 	 * @param  Object $wp_query Instance.
 	 * @return array
 	 * @since unknown
-	 * @since 4.1.7 Fixed: Session answers are included in wrong question.
-	 * @since 4.1.8 Fixed: Sorting issue with best answer.
+	 * @since 4.1.7  Fixed: Session answers are included in wrong question.
+	 * @since 4.1.8  Fixed: Sorting issue with best answer.
+	 * @since 4.1.13 Do not include session posts to question query.
 	 */
 	public static function sql_filter( $sql, $wp_query ) {
 		global $wpdb;
@@ -59,31 +60,10 @@ class AP_QA_Query_Hooks {
 					}
 				}
 
-				$ap_type = false;
-				if ( isset( $wp_query->query['ap_question_query'] ) ) {
-					$ap_type = 'question';
-				} elseif ( isset( $wp_query->query['ap_answers_query'] ) ) {
-					$ap_type = 'answer';
-				}
-
-				if ( ! empty( $ap_type ) && ! get_query_var( 'answer_id', false ) ) {
-					// Include user's session questions.
-					$session_posts = anspress()->session->get( $ap_type . 's' );
-					$ids           = sanitize_comma_delimited( $session_posts );
-
-					if ( ! empty( $ids ) ) {
-						if ( 'question' === $ap_type ) {
-							$sql['where'] = $sql['where'] . $wpdb->prepare( " OR ( {$wpdb->posts}.ID IN ({$ids}) AND {$wpdb->posts}.post_type = %s )", $ap_type );
-						} elseif ( ! empty( $wp_query->args['question_id'] ) ) {
-							$sql['where'] = $sql['where'] . $wpdb->prepare( " OR ( {$wpdb->posts}.ID IN ({$ids}) AND {$wpdb->posts}.post_type = %s AND {$wpdb->posts}.post_parent = %d )", $ap_type, $wp_query->args['question_id'] );
-						}
-					}
-				}
-
 				// Replace post_status query.
 				if ( is_user_logged_in() && false !== ( $pos = strpos( $sql['where'], $post_status ) ) ) {
 					$pos          = $pos + strlen( $post_status );
-					$author_query = $wpdb->prepare( " OR ( {$wpdb->posts}.post_author = %d AND {$wpdb->posts}.post_status IN ('publish', 'private_post', 'trash', 'moderate') ) ", get_current_user_id() );
+					$author_query = $wpdb->prepare( " OR ( {$wpdb->posts}.post_author = %d AND {$wpdb->posts}.post_status IN ('private_post') ) ", get_current_user_id() );
 					$sql['where'] = substr_replace( $sql['where'], $author_query, $pos, 0 );
 				}
 			}
@@ -235,20 +215,7 @@ class AP_QA_Query_Hooks {
 	 */
 	public static function pre_get_posts( $query ) {
 		if ( $query->is_single() && $query->is_main_query() && 'question' === get_query_var( 'post_type' ) ) {
-			$query->set( 'post_status', [ 'publish', 'trash', 'moderate', 'private_post', 'future' ] );
-		}
-	}
-
-	/**
-	 * Make sure single question loop render AnsPress shortcode.
-	 *
-	 * @param WP_Query $query Query loop.
-	 * @return void
-	 * @since 4.1.3
-	 */
-	public static function loop_start( $query ) {
-		if ( $query->is_main_query() && $query->is_single() && 'question' === get_query_var( 'post_type' ) ) {
-			$query->posts[0]->post_content = '[anspress]';
+			$query->set( 'post_status', [ 'publish', 'trash', 'moderate', 'private_post', 'future', 'ap_spam' ] );
 		}
 	}
 }

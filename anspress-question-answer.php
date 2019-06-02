@@ -14,8 +14,8 @@
  * Plugin Name:       AnsPress Question Answer
  * Plugin URI:        https://anspress.io
  * Description:       The most advance community question and answer system for WordPress
- * Donate link:         https://goo.gl/ffainr
- * Version:           4.1.9
+ * Donate link:       https://goo.gl/ffainr
+ * Version:           4.1.15
  * Author:            Rahul Aryan
  * Author URI:        https://anspress.io
  * License:           GPL-3.0+
@@ -25,15 +25,13 @@
  * GitHub Plugin URI: anspress/anspress
  */
 
-use AnsPress\Form as Form;
-
 // If this file is called directly, abort.
 if ( ! defined( 'WPINC' ) ) {
 	die;
 }
 
-// Define databse version.
-define( 'AP_DB_VERSION', 34 );
+// Define database version.
+define( 'AP_DB_VERSION', 35 );
 
 // Check if using required PHP version.
 if ( version_compare( PHP_VERSION, '5.5' ) < 0 ) {
@@ -65,7 +63,7 @@ if ( ! class_exists( 'AnsPress' ) ) {
 		 * @access private
 		 * @var string
 		 */
-		private $_plugin_version = '4.1.9';
+		private $_plugin_version = '4.1.15';
 
 		/**
 		 * Class instance
@@ -259,7 +257,7 @@ if ( ! class_exists( 'AnsPress' ) ) {
 
 			foreach ( $constants as $k => $val ) {
 				if ( ! defined( $k ) ) {
-						define( $k, $val );
+					define( $k, $val );
 				}
 			}
 		}
@@ -359,6 +357,10 @@ if ( ! class_exists( 'AnsPress' ) ) {
 		 * @since 4.1.8 Load all addons if constant `ANSPRESS_ENABLE_ADDONS` is set.
 		 */
 		public function site_include() {
+			$this->theme_compat = new stdClass(); // Base theme compatibility class.
+
+			$this->theme_compat->active = false;
+
 			\AnsPress_Hooks::init();
 			$this->activity = AnsPress\Activity_Helper::get_instance();
 			\AnsPress_Views::init();
@@ -502,7 +504,7 @@ if ( ! class_exists( 'AnsPress' ) ) {
 			$args = apply_filters( 'ap_form_' . $name, null );
 
 			if ( ! is_null( $args ) && ! empty( $args ) ) {
-				$this->forms[ $name ] = new Form( 'form_' . $name, $args );
+				$this->forms[ $name ] = new AnsPress\Form( 'form_' . $name, $args );
 
 				return true;
 			}
@@ -567,21 +569,6 @@ if ( ! class_exists( 'AnsPress_Init' ) ) {
 		}
 
 		/**
-		 * Before activation redirect
-		 *
-		 * @access public
-		 * @static
-		 *
-		 * @param  string $plugin Plugin base name.
-		 * @deprecated 4.1.3
-		 */
-		public static function activation_redirect( $plugin ) {
-			if ( plugin_basename( __FILE__ ) === $plugin ) {
-				add_option( 'anspress_do_installation_redirect', true );
-			}
-		}
-
-		/**
 		 * Creating table whenever a new blog is created
 		 *
 		 * @access public
@@ -597,6 +584,7 @@ if ( ! class_exists( 'AnsPress_Init' ) ) {
 		public static function create_blog( $blog_id, $user_id, $domain, $path, $site_id, $meta ) {
 			if ( is_plugin_active_for_network( plugin_basename( __FILE__ ) ) ) {
 				switch_to_blog( $blog_id ); // @codingStandardsIgnoreLine
+				require_once dirname( __FILE__ ) . '/activate.php';
 				AP_Activate::get_instance( true );
 				restore_current_blog();
 			}
@@ -641,6 +629,8 @@ require_once dirname( __FILE__ ) . '/includes/class/class-singleton.php';
  * Register hooks that are fired when the plugin is activated or deactivated.
  * When the plugin is deleted, the uninstall.php file is loaded.
  */
-require_once dirname( __FILE__ ) . '/activate.php';
-
-register_activation_hook( __FILE__, [ 'AP_Activate', 'get_instance' ] );
+function anspress_activation() {
+	require_once dirname( __FILE__ ) . '/activate.php';
+	\AP_Activate::get_instance();
+}
+register_activation_hook( __FILE__, 'anspress_activation' );

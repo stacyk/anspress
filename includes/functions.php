@@ -136,8 +136,7 @@ function is_anspress() {
 
 	// If BuddyPress installed.
 	if ( function_exists( 'bp_current_component' ) ) {
-		$bp_com = bp_current_component();
-		if ( 'questions' === $bp_com || 'answers' === $bp_com ) {
+		if ( in_array( bp_current_component(),  array( 'qa', 'questions', 'answers' ) ) ) {
 			$ret = true;
 		}
 	}
@@ -255,7 +254,7 @@ function ap_human_time( $time, $unix = true, $show_full_date = 604800, $format =
 		if ( $show_full_date + $time > current_time( 'timestamp', true ) ) {
 			return sprintf(
 				/* translators: %s: human-readable time difference */
-				__( '%s ago', 'anspress-question-answer' ),
+				_x( '%s ago', 'anspress-question-answer' ),
 				human_time_diff( $time, current_time( 'timestamp', true ) )
 			);
 		}
@@ -902,22 +901,6 @@ function ap_get_sort() {
 }
 
 /**
- * Register AnsPress menu.
- *
- * @param string $slug Menu slug.
- * @param string $title Menu title.
- * @param string $link Menu link.
- * @deprecated 4.1.6
- */
-function ap_register_menu( $slug, $title, $link ) {
-	anspress()->menu[ $slug ] = array(
-		'title' => $title,
-		'link'  => $link,
-	);
-}
-
-
-/**
  * Remove white space from string.
  *
  * @param string $contents String.
@@ -986,7 +969,7 @@ function ap_create_base_page() {
 }
 
 /**
- * Return question id with solved prefix if answer is accepted.
+ * Return question title with solved prefix if answer is accepted.
  *
  * @param boolean|integer $question_id Question ID.
  * @return string
@@ -1706,6 +1689,10 @@ function ap_get_addons() {
 		'syntaxhighlighter.php' => array(
 			'name'        => __( 'Syntax Highlighter', 'anspress-question-answer' ),
 			'description' => __( 'Add syntax highlighter support.', 'anspress-question-answer' ),
+		),
+		'akismet.php' => array(
+			'name'        => __( 'Akismet Check', 'anspress-question-answer' ),
+			'description' => __( 'Check for spam in post content.', 'anspress-question-answer' ),
 		),
 	);
 
@@ -2463,3 +2450,56 @@ function ap_is_cpt( $_post ) {
 	return ( in_array( $_post->post_type, [ 'answer', 'question' ], true ) );
 }
 
+/**
+ * Removes all filters from a WordPress filter, and stashes them in the anspress()
+ * global in the event they need to be restored later.
+ * Copied directly from bbPress plugin.
+ *
+ * @global WP_filter $wp_filter
+ * @global array $merged_filters
+ * @param string $tag
+ * @param int $priority
+ * @return bool
+ *
+ * @since 4.2.0
+ */
+function ap_remove_all_filters( $tag, $priority = false ) {
+	global $wp_filter, $merged_filters;
+
+	$ap = anspress();
+
+	// Filters exist
+	if ( isset( $wp_filter[ $tag ] ) ) {
+
+		// Filters exist in this priority
+		if ( ! empty( $priority ) && isset( $wp_filter[ $tag ][ $priority ] ) ) {
+
+			// Store filters in a backup
+			$ap->new_filters->wp_filter[ $tag ][ $priority ] = $wp_filter[ $tag ][ $priority ];
+
+			// Unset the filters
+			unset( $wp_filter[ $tag ][ $priority ] );
+
+		// Priority is empty.
+		} else {
+
+			// Store filters in a backup
+			$ap->new_filters->wp_filter[ $tag ] = $wp_filter[ $tag ];
+
+			// Unset the filters
+			unset( $wp_filter[ $tag ] );
+		}
+	}
+
+	// Check merged filters
+	if ( isset( $merged_filters[ $tag ] ) ) {
+
+		// Store filters in a backup
+		$ap->new_filters->merged_filters[ $tag ] = $merged_filters[ $tag ];
+
+		// Unset the filters
+		unset( $merged_filters[ $tag ] );
+	}
+
+	return true;
+}

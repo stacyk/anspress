@@ -213,11 +213,11 @@ class AnsPress_Admin {
 		global $submenu_file, $current_screen, $plugin_page;
 
 		// Set correct active/current menu and submenu in the WordPress Admin menu for the "example_cpt" Add-New/Edit/List
-		if ( $current_screen->post_type == 'question' ) {
-			$submenu_file = 'edit.php?post_type=question';
-			$parent_file  = 'anspress';
-		} elseif ( $current_screen->post_type == 'answer' ) {
-			$submenu_file = 'edit.php?post_type=answer';
+		if ( in_array( $current_screen->post_type, [ 'question', 'answer' ], true )  ) {
+			$submenu_file = 'edit.php?post_type=' . $current_screen->post_type;
+			if ( $current_screen->action == 'add' ) {
+				$submenu_file = 'post-new.php?post_type=' . $current_screen->post_type;
+			}
 			$parent_file  = 'anspress';
 		}
 
@@ -255,7 +255,7 @@ class AnsPress_Admin {
 		global $current_screen;
 		$taxonomy = $current_screen->taxonomy;
 
-		if ( 'question_category' === $taxonomy || 'question_tags' === $taxonomy || 'question_label' === $taxonomy || 'rank' === $taxonomy || 'badge' === $taxonomy ) {
+		if ( 'question_category' === $taxonomy || 'question_tag' === $taxonomy || 'question_label' === $taxonomy || 'rank' === $taxonomy || 'badge' === $taxonomy ) {
 			$parent_file = 'anspress';
 		}
 		return $parent_file;
@@ -744,7 +744,9 @@ class AnsPress_Admin {
 	 */
 	public static function update_db() {
 		if ( current_user_can( 'manage_options' ) ) {
-			$activate = AP_Activate::get_instance();
+			require_once ANSPRESS_DIR . '/activate.php';
+
+			$activate = \AP_Activate::get_instance();
 			$activate->insert_tables();
 			update_option( 'anspress_db_version', AP_DB_VERSION );
 		}
@@ -1043,6 +1045,12 @@ class AnsPress_Admin {
 						'have_cap'  => __( 'Only user having ap_new_answer capability', 'anspress-question-answer' ),
 					),
 				),
+				'create_account'      => array(
+					'label' => __( 'Create account for non-registered', 'anspress-question-answer' ),
+					'desc'  => __( 'Allow non-registered users to create account by entering their email in question. After submitting post a confirmation email will be sent to the user.', 'anspress-question-answer' ),
+					'type'  => 'checkbox',
+					'value' => $opt['create_account'],
+				),
 				'multiple_answers'      => array(
 					'label' => __( 'Multiple answers', 'anspress-question-answer' ),
 					'desc'  => __( 'Allow users to submit multiple answer per question.', 'anspress-question-answer' ),
@@ -1294,7 +1302,7 @@ class AnsPress_Admin {
 					'value'   => $opt['answers_sort'],
 				),
 				'minimum_ans_length'            => array(
-					'label'   => __( 'Minimum question content', 'anspress-question-answer' ),
+					'label'   => __( 'Minimum answer content', 'anspress-question-answer' ),
 					'desc'    => __( 'Set minimum letters for a answer contents.', 'anspress-question-answer' ),
 					'subtype' => 'number',
 					'value'   => $opt['minimum_ans_length'],

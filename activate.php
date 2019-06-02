@@ -125,7 +125,7 @@ class AP_Activate {
 	public function enable_addons() {
 		ap_activate_addon( 'reputation.php' );
 		ap_activate_addon( 'email.php' );
-		ap_activate_addon( 'category.php' );
+		ap_activate_addon( 'categories.php' );
 	}
 
 	/**
@@ -246,10 +246,14 @@ class AP_Activate {
 	public function activity_table() {
 		global $wpdb;
 
-		// Delete old activity table if exists.
-		$existing_table = $wpdb->get_row( "SHOW COLUMNS FROM $wpdb->ap_activity LIKE 'secondary_user'" );
-		if ( ! empty( $existing_table ) && 'secondary_user' === $existing_table->Field ) {
-			$wpdb->query( "DROP TABLE IF EXISTS $wpdb->ap_activity" );
+		// Check activity table exists.
+		if ( $wpdb->get_var( "SHOW TABLES LIKE '$wpdb->ap_activity'" ) === $wpdb->ap_activity ) {
+			// Delete old activity table if exists.
+			$existing_table = $wpdb->get_row( "SHOW COLUMNS FROM $wpdb->ap_activity LIKE 'secondary_user'" );
+
+			if ( ! empty( $existing_table ) && 'secondary_user' === $existing_table->Field ) {
+				$wpdb->query( "DROP TABLE IF EXISTS $wpdb->ap_activity" );
+			}
 		}
 
 		$this->tables[] = 'CREATE TABLE ' . $wpdb->ap_activity . ' (
