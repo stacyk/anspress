@@ -254,7 +254,7 @@ function ap_human_time( $time, $unix = true, $show_full_date = 604800, $format =
 		if ( $show_full_date + $time > current_time( 'timestamp', true ) ) {
 			return sprintf(
 				/* translators: %s: human-readable time difference */
-				_x( '%s ago', 'anspress-question-answer' ),
+				__( '%s ago', 'anspress-question-answer' ),
 				human_time_diff( $time, current_time( 'timestamp', true ) )
 			);
 		}
@@ -1309,18 +1309,7 @@ function ap_disable_question_suggestion() {
  * @since 4.0.0
  */
 function ap_post_author_pre_fetch( $ids ) {
-	$users = get_users(
-		[
-			'include' => $ids,
-			'fields'  => array( 'ID', 'user_login', 'user_nicename', 'user_email', 'display_name' ),
-		]
-	);
-
-	foreach ( (array) $users as $user ) {
-		update_user_caches( $user );
-	}
-
-	update_meta_cache( 'user', $ids );
+	cache_users($ids);
 }
 
 
